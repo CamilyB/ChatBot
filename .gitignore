@@ -1,0 +1,43 @@
+# Ignorar tudo
+*
+
+# Mas não ignorar esses:
+!.gitignore
+!main.py
+
+# Arquivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+.venv*/
+venv*/
+
+# Logs e cache
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.tmp
+*.swp
+*.bak
+*.dll
+
+# Configurações do sistema
+.DS_Store
+Thumbs.db
+
+# IDEs e editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# PDFs (downloads automáticos)
+*.pdf
