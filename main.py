@@ -73,24 +73,29 @@ def extrair_provimentos(arquivo_pdf):
     numeros = [int(re.search(r"\d+", p).group()) for p in provimentos]
     return numeros
 
-# Extrai quais artigos foram alterados pelo provimento
+# Extrai os trechos de artigos alterados pelo provimento
 def extrair_artigos_alterados(arquivo_pdf, numero_provimento):
-    artigos_encontrados = []
+    artigos_alterados = []
 
-    padrao = re.compile(rf"Provimento n\. ?{numero_provimento}(.*?)(?=Provimento n\.|\Z)", re.DOTALL)
+    # Regex para capturar "Provimento n.44" ou "Provimento n. 44"
+    padrao = re.compile(rf"Provimento n\. ?{numero_provimento}\b")
 
     with pdfplumber.open(arquivo_pdf) as pdf:
         texto_completo = ""
         for pagina in pdf.pages:
             texto_completo += pagina.extract_text() or ""
 
-        trecho = padrao.search(texto_completo)
-        if trecho:
-            # procura por "art." ou "arts." dentro do trecho
-            artigos = re.findall(r"art\. ?\d+", trecho.group(1))
-            artigos_encontrados = artigos
+        # Divide o texto em blocos por artigos
+        blocos = re.split(r"(Art\.\s*\d+[^A]*?)", texto_completo, flags=re.DOTALL)
 
-    return artigos_encontrados
+        for i in range(1, len(blocos), 2):  
+            artigo = blocos[i] + (blocos[i+1] if i+1 < len(blocos) else "")
+            
+            # Se dentro do artigo aparecer o provimento, adiciona
+            if padrao.search(artigo):
+                artigos_alterados.append(artigo.strip())
+
+    return artigos_alterados
 
 # Verifica se existe um provimento novo
 def verificar_provimento_novo(provimentos, arquivo_pdf):
