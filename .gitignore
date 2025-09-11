@@ -4,6 +4,7 @@
 # Mas não ignorar esses:
 !.gitignore
 !main.py
+!ultimo_provimento.txt
 
 # Arquivos de Python
 __pycache__/
