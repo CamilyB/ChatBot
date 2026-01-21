@@ -77,23 +77,25 @@ def extrair_provimentos(arquivo_pdf):
 def extrair_artigos_alterados(arquivo_pdf, numero_provimento):
     artigos_alterados = []
 
-    # Regex para capturar "Provimento n.44" ou "Provimento n. 44"
-    padrao = re.compile(rf"Provimento n\. ?{numero_provimento}\b")
+    # Regex para localizar trechos que mencionam o provimento
+    regex_provimento = rf"Provimento n\. ?{numero_provimento}"
 
     with pdfplumber.open(arquivo_pdf) as pdf:
-        texto_completo = ""
-        for pagina in pdf.pages:
-            texto_completo += pagina.extract_text() or ""
+        texto_completo = "".join([p.extract_text() or "" for p in pdf.pages])
 
-        # Divide o texto em blocos por artigos
-        blocos = re.split(r"(Art\.\s*\d+[^A]*?)", texto_completo, flags=re.DOTALL)
+    # Captura todos os blocos entre um Art. e o próximo Art. ou fim do PDF
+    blocos = re.split(r"(Art\.?\s*\d+.*?)", texto_completo, flags=re.DOTALL | re.IGNORECASE)
 
-        for i in range(1, len(blocos), 2):  
-            artigo = blocos[i] + (blocos[i+1] if i+1 < len(blocos) else "")
-            
-            # Se dentro do artigo aparecer o provimento, adiciona
-            if padrao.search(artigo):
-                artigos_alterados.append(artigo.strip())
+    # Junta pares (Artigo + conteúdo)
+    artigos_pdf = []
+    for i in range(1, len(blocos), 2):
+        artigo = (blocos[i] + (blocos[i+1] if i+1 < len(blocos) else "")).strip()
+        artigos_pdf.append(artigo)
+
+    # Filtra apenas os que citam o provimento
+    for artigo in artigos_pdf:
+        if re.search(regex_provimento, artigo, flags=re.IGNORECASE):
+            artigos_alterados.append(artigo)
 
     return artigos_alterados
 
@@ -114,24 +116,35 @@ def verificar_provimento_novo(provimentos, arquivo_pdf):
         with open(ARQUIVO_PROVIMENTO, "r") as f:
             ultimo_salvo = int(f.read().strip())
 
-        if ultimo_detectado > ultimo_salvo:
-            print(f"🚨 Novo provimento encontrado: {ultimo_detectado} (antes era {ultimo_salvo})")
+        #Filtra os novos provimentos
+        novos = sorted([p for p in provimentos if p > ultimo_salvo])
 
-            artigos = extrair_artigos_alterados(arquivo_pdf, ultimo_detectado)
-            if artigos:
-                print(f"📌 Artigos alterados pelo Provimento {ultimo_detectado}: {', '.join(artigos)}")
-            else:
-                print("⚠ Nenhum artigo encontrado para esse provimento.")
+        if novos:
+            print(f"🚨 Novos provimentos encontrados: {novos} (último salvo era {ultimo_salvo})")
 
+            for numero in novos:
+                print(f"\n=== Processando Provimento {numero} ===")
+                artigos = extrair_artigos_alterados(arquivo_pdf, numero)
+                
+                if artigos:
+                    print(f"📌 Artigos alterados pelo Provimento {numero}:")
+                    for trecho in artigos:
+                        print("\n" + "-"*60)
+                        print(trecho)
+                        print("-"*60)
+                else:
+                    print(f"⚠ Nenhum artigo encontrado para o Provimento {numero}.")
+
+            # após processar todos os novos, salva o último
             with open(ARQUIVO_PROVIMENTO, "w") as f:
                 f.write(str(ultimo_detectado))
+
         else:
             print("✅ Nenhum provimento novo.")
 
     # remove o PDF para não acumular
     os.remove(arquivo_pdf)
     print("🗑️ Arquivo PDF excluído após o processamento.")
-
 
 # Fluxo principal
 
